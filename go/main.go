@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+
 	// _ "net/http/pprof"
 	// "runtime"
 
@@ -115,6 +116,7 @@ func initializeHandler(c echo.Context) error {
 	}
 
 	queries := []string{
+		"ALTER TABLE icons ADD COLUMN img_hash VARBINARY(32);",
 		"CREATE INDEX `idx_livestream_id_tags` ON `livestream_tags` (`livestream_id`);",
 		"CREATE INDEX `idx_reservation_slot_start_end` ON `reservation_slots` (`start_at`, `end_at`);",
 		"CREATE INDEX `idx_user_id_livestream_id` ON `ng_words` (`user_id`, `livestream_id`);",
