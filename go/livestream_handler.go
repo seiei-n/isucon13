@@ -486,6 +486,7 @@ func getLivecommentReportsHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, reports)
 }
 
+// TODO: N+1改善
 func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel LivestreamModel) (Livestream, error) {
 	ownerModel := UserModel{}
 	if err := tx.GetContext(ctx, &ownerModel, "SELECT * FROM users WHERE id = ?", livestreamModel.UserID); err != nil {
@@ -496,23 +497,37 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 		return Livestream{}, err
 	}
 
-	var livestreamTagModels []*LivestreamTagModel
-	if err := tx.SelectContext(ctx, &livestreamTagModels, "SELECT * FROM livestream_tags WHERE livestream_id = ?", livestreamModel.ID); err != nil {
+	var tagModels []*TagModel
+	// JOINでliveStreamに紐づくタグを取得
+	if err := tx.SelectContext(ctx, &tagModels, "SELECT * FROM tags INNER JOIN livestream_tags ON tags.id = livestream_tags.tag_id WHERE livestream_tags.livestream_id = ?", livestreamModel.ID); err != nil {
 		return Livestream{}, err
 	}
 
-	tags := make([]Tag, len(livestreamTagModels))
-	for i := range livestreamTagModels {
-		tagModel := TagModel{}
-		if err := tx.GetContext(ctx, &tagModel, "SELECT * FROM tags WHERE id = ?", livestreamTagModels[i].TagID); err != nil {
-			return Livestream{}, err
-		}
-
+	tags := make([]Tag, len(tagModels))
+	for i := range tagModels {
 		tags[i] = Tag{
-			ID:   tagModel.ID,
-			Name: tagModel.Name,
+			ID:   tagModels[i].ID,
+			Name: tagModels[i].Name,
 		}
 	}
+
+	// var livestreamTagModels []*LivestreamTagModel
+	// if err := tx.SelectContext(ctx, &livestreamTagModels, "SELECT * FROM livestream_tags WHERE livestream_id = ?", livestreamModel.ID); err != nil {
+	// 	return Livestream{}, err
+	// }
+
+	// tags := make([]Tag, len(livestreamTagModels))
+	// for i := range livestreamTagModels {
+	// 	tagModel := TagModel{}
+	// 	if err := tx.GetContext(ctx, &tagModel, "SELECT * FROM tags WHERE id = ?", livestreamTagModels[i].TagID); err != nil {
+	// 		return Livestream{}, err
+	// 	}
+
+	// 	tags[i] = Tag{
+	// 		ID:   tagModel.ID,
+	// 		Name: tagModel.Name,
+	// 	}
+	// }
 
 	livestream := Livestream{
 		ID:           livestreamModel.ID,

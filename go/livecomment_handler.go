@@ -422,6 +422,7 @@ func moderateHandler(c echo.Context) error {
 	})
 }
 
+// N+1
 func fillLivecommentResponse(ctx context.Context, tx *sqlx.Tx, livecommentModel LivecommentModel) (Livecomment, error) {
 	commentOwnerModel := UserModel{}
 	if err := tx.GetContext(ctx, &commentOwnerModel, "SELECT * FROM users WHERE id = ?", livecommentModel.UserID); err != nil {
@@ -432,6 +433,7 @@ func fillLivecommentResponse(ctx context.Context, tx *sqlx.Tx, livecommentModel 
 		return Livecomment{}, err
 	}
 
+	// liveStream, model, tagを取得
 	livestreamModel := LivestreamModel{}
 	if err := tx.GetContext(ctx, &livestreamModel, "SELECT * FROM livestreams WHERE id = ?", livecommentModel.LivestreamID); err != nil {
 		return Livecomment{}, err
