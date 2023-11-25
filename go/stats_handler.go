@@ -230,21 +230,15 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		}
 	}
 
-	var livestreams []*LivestreamModel
-	if err := tx.SelectContext(ctx, &livestreams, "SELECT * FROM livestreams"); err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
-	}
-
 	var livestreamInfo []*LivestreamInfo
 	query := `
 		SELECT l.id, COUNT(r.id) AS Count, IFNULL(SUM(l2.tip), 0) AS Sum
 		FROM livestreams l
 		LEFT JOIN reactions r ON l.id = r.livestream_id
 		LEFT JOIN livecomments l2 ON l.id = l2.livestream_id
-		WHERE l.id = ?
 		GROUP BY l.id
 	`
-	if err := tx.SelectContext(ctx, &livestreamInfo, query, livestream.ID); err != nil {
+	if err := tx.SelectContext(ctx, &livestreamInfo, query); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestream info: "+err.Error())
 	}
 
