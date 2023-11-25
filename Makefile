@@ -29,6 +29,11 @@ pprof:
 	cd /home/isucon/webapp/go &&
 	go tool pprof -seconds 90 -http=localhost:1080 http://localhost:6060/debug/pprof/profile
 
+.PHONY: init-pd
+init-pd:
+	echo "Initializing pd"
+	cd /home/isucon/webapp/pdns && ./init_zone.sh
+
 .PHONY: app-deploy
 app-deploy:
 	echo "Deploying app"
