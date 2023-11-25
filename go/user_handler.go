@@ -85,6 +85,28 @@ type PostIconResponse struct {
 	ID int64 `json:"id"`
 }
 
+type chachedImage struct {
+	imageHash string
+}
+
+var (
+	chachedImages = make(map[int64]*chachedImage)
+)
+
+func setCachedImage(id int64, imageHash string) {
+	chachedImages[id] = &chachedImage{
+		imageHash: imageHash,
+	}
+}
+
+func getCachedImage(id int64) (string, bool) {
+	image, ok := chachedImages[id]
+	if !ok {
+		return "", false
+	}
+	return image.imageHash, true
+}
+
 func getIconHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -414,7 +436,15 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			return User{}, err
 		}
 	}
-	iconHash := sha256.Sum256(image)
+
+	var iconHash string
+	if hash, ok := getCachedImage(userModel.ID); ok {
+		iconHash = hash
+	} else {
+		iconHash = fmt.Sprintf("%x", sha256.Sum256(image))
+		setCachedImage(userModel.ID, iconHash)
+	}
+	
 
 	user := User{
 		ID:          userModel.ID,
