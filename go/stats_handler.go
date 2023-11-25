@@ -241,7 +241,7 @@ func getLivestreamStatisticsHandler(c echo.Context) error {
 		FROM livestreams l
 		LEFT JOIN reactions r ON l.id = r.livestream_id
 		LEFT JOIN livecomments l2 ON l.id = l2.livestream_id
-		WHERE l.id = 5849
+		WHERE l.id = ?
 		GROUP BY l.id
 	`
 	if err := tx.SelectContext(ctx, &livestreamInfo, query, livestream.ID); err != nil {
