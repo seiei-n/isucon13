@@ -1,0 +1,21 @@
+matching_groups:
+  - /api/tag
+  - /api/user/[^\/]+/*
+  - /api/livestream/*
+  - /api/livestream/[^\/]+/*
+  - /api/register
+  - /api/login
+  - /api/icon
+  - /api/payment
+sort: avg
+reverse: true
+metrics:
+  - count
+  - method
+  - uri
+  - min
+  - avg
+  - max
+  - sum
+  
+file: /var/log/nginx/access.ndjson
