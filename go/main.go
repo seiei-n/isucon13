@@ -114,6 +114,21 @@ func initializeHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to initialize: "+err.Error())
 	}
 
+	queries := []string{
+		"CREATE INDEX `idx_livestream_id_tags` ON `livestream_tags` (`livestream_id`);",
+		"CREATE INDEX `idx_reservation_slot_start_end` ON `reservation_slots` (`start_at`, `end_at`);",
+		"CREATE INDEX `idx_user_id_livestream_id` ON `ng_words` (`user_id`, `livestream_id`);",
+		"CREATE INDEX `idx_user_id` ON `livestreams` (`user_id`);",
+		"CREATE INDEX `idx_livestream_id_comments` ON `livecomments` (`livestream_id`);",
+	}
+
+	for _, q := range queries {
+		if _, err := dbConn.Exec(q); err != nil {
+			c.Logger().Warnf("failed to execute query: %s", q)
+			continue
+		}
+	}
+
 	c.Request().Header.Add("Content-Type", "application/json;charset=utf-8")
 	return c.JSON(http.StatusOK, InitializeResponse{
 		Language: "golang",
