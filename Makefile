@@ -24,6 +24,10 @@ alp:
 pt:
 	sudo pt-query-digest /var/log/mysql/mysql-slow.log
 
+.PHONY: pprof
+pprof:
+	cd /home/isucon/webapp/go &&
+	go tool pprof -seconds 90 -http=localhost:1080 http://localhost:6060/debug/pprof/profile
 
 .PHONY: app-deploy
 app-deploy:
