@@ -393,8 +393,8 @@ func moderateHandler(c echo.Context) error {
 	}
 
 	// NGワードにヒットする過去の投稿も全削除する
-	for _, ngword := range ngwords {
-		for _, livecomment := range livecomments {
+	for _, livecomment := range livecomments {
+		for _, ngword := range ngwords {
 			query := `
 			DELETE FROM livecomments
 			WHERE
@@ -404,14 +404,17 @@ func moderateHandler(c echo.Context) error {
 			FROM
 			(SELECT ? AS text) AS texts
 			INNER JOIN
-			(SELECT CONCAT('%', ?, '%')	AS pattern) AS patterns
+			(SELECT CONCAT('%', ?, '%') AS pattern) AS patterns
 			ON texts.text LIKE patterns.pattern) >= 1;
 			`
-			if _, err := tx.ExecContext(ctx, query, livecomment.ID, livestreamID, livecomment.Comment, ngword.Word); err != nil {
+			if res, err := tx.ExecContext(ctx, query, livecomment.ID, livestreamID, livecomment.Comment, ngword.Word); err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
+			} else if rowsAffected, _ := res.RowsAffected(); rowsAffected > 0 {
+				// データが存在してかつ削除に成功した場合に break
+				break
 			}
 		}
-	}
+	}	
 
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
