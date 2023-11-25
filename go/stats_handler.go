@@ -150,16 +150,14 @@ func getUserStatisticsHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
 	}
 
-	for _, livestream := range livestreams {
-		var livecomments []*LivecommentModel
-		if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments WHERE livestream_id = ?", livestream.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
-		}
-
-		for _, livecomment := range livecomments {
-			totalTip += livecomment.Tip
-			totalLivecomments++
-		}
+	var livecomments []*LivecommentModel
+	if err := tx.SelectContext(ctx, &livecomments, `
+	    SELECT livecomments.Tip FROM livestreams LEFT JOIN livecomments ON livestreams.ID = livecomments.livestream_id WHERE livestreams.user_id = ?`, user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	    return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
+	}
+	for _, livecomment := range livecomments {
+	    totalTip += livecomment.Tip
+	    totalLivecomments++
 	}
 
 	// 合計視聴者数
