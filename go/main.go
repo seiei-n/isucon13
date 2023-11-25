@@ -109,8 +109,8 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 }
 
 func initializeHandler(c echo.Context) error {
-	if out, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
-		c.Logger().Warnf("init.sh failed with err=%s", string(out))
+	if _, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
+		// c.Logger().Warnf("init.sh failed with err=%s", string(out))
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to initialize: "+err.Error())
 	}
 
@@ -221,15 +221,15 @@ type ErrorResponse struct {
 }
 
 func errorResponseHandler(err error, c echo.Context) {
-	c.Logger().Errorf("error at %s: %+v", c.Path(), err)
+	// c.Logger().Errorf("error at %s: %+v", c.Path(), err)
 	if he, ok := err.(*echo.HTTPError); ok {
 		if e := c.JSON(he.Code, &ErrorResponse{Error: err.Error()}); e != nil {
-			c.Logger().Errorf("%+v", e)
+			// c.Logger().Errorf("%+v", e)
 		}
 		return
 	}
 
 	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()}); e != nil {
-		c.Logger().Errorf("%+v", e)
+		// c.Logger().Errorf("%+v", e)
 	}
 }
