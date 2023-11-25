@@ -405,6 +405,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 	}
 
 	var iconHash string
+	iconHash = ""
 	if err := tx.GetContext(ctx, &iconHash, "SELECT img_hash FROM icons WHERE user_id = ?", userModel.ID); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return User{}, err
@@ -423,6 +424,10 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			}
 		}
 		iconHash = fmt.Sprintf("%x", sha256.Sum256(image))
+		// insert hash
+		if _, err := tx.ExecContext(ctx, "UPDATE icons SET img_hash = ? WHERE user_id = ?", iconHash, userModel.ID); err != nil {
+			return User{}, err
+		}
 	}
 
 	user := User{
