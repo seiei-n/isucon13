@@ -17,6 +17,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
+	cache "github.com/patrickmn/go-cache"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -29,6 +30,7 @@ const (
 )
 
 var fallbackImage = "../img/NoImage.jpg"
+var c = cache.New(24 * time.Hour, 24*time.Hour)
 
 type UserModel struct {
 	ID             int64  `db:"id"`
@@ -85,6 +87,24 @@ type PostIconResponse struct {
 	ID int64 `json:"id"`
 }
 
+type CachedImage struct {
+	id    int64
+	Image []byte
+}
+
+func setCache(key string, value interface{}) {
+	c.Set(key, value, cache.DefaultExpiration)
+}
+
+func getCache(key string) (interface{}, bool) {
+	return c.Get(key)
+}
+
+func updateCache(key string, value interface{}) {
+	c.Delete(key)
+	c.Set(key, value, cache.DefaultExpiration)
+}
+
 func getIconHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -105,11 +125,13 @@ func getIconHandler(c echo.Context) error {
 	}
 
 	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", user.ID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return c.File(fallbackImage)
-		} else {
-			return echo.NewHTTPError(http.StatusInternalServerError, "failed to get user icon: "+err.Error())
+	cachedImage, ok := getCache(fmt.Sprintf("%d", user.ID))
+	if ok {
+		image = cachedImage.(CachedImage).Image
+	} else {
+		image, err = os.ReadFile(fallbackImage)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -117,8 +139,6 @@ func getIconHandler(c echo.Context) error {
 }
 
 func postIconHandler(c echo.Context) error {
-	ctx := c.Request().Context()
-
 	if err := verifyUserSession(c); err != nil {
 		// echo.NewHTTPErrorが返っているのでそのまま出力
 		return err
@@ -134,32 +154,16 @@ func postIconHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "failed to decode the request body as json")
 	}
 
-	tx, err := dbConn.BeginTxx(ctx, nil)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to begin transaction: "+err.Error())
-	}
-	defer tx.Rollback()
-
-	if _, err := tx.ExecContext(ctx, "DELETE FROM icons WHERE user_id = ?", userID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old user icon: "+err.Error())
-	}
-
-	rs, err := tx.ExecContext(ctx, "INSERT INTO icons (user_id, image) VALUES (?, ?)", userID, req.Image)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to insert new user icon: "+err.Error())
-	}
-
-	iconID, err := rs.LastInsertId()
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get last inserted icon id: "+err.Error())
-	}
-
-	if err := tx.Commit(); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
+	// cacheにあるか確認
+	if _, ok := getCache(fmt.Sprintf("%d", userID)); ok {
+		updateCache(fmt.Sprintf("%d", userID), CachedImage{
+			id:    userID,
+			Image: req.Image,
+		})
 	}
 
 	return c.JSON(http.StatusCreated, &PostIconResponse{
-		ID: iconID,
+		ID: userID,
 	})
 }
 
@@ -405,15 +409,17 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 	}
 
 	var image []byte
-	if err := tx.GetContext(ctx, &image, "SELECT image FROM icons WHERE user_id = ?", userModel.ID); err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			return User{}, err
-		}
+	var err error
+	cachedImage, ok := getCache(fmt.Sprintf("%d", userModel.ID))
+	if ok {
+		image = cachedImage.(CachedImage).Image
+	} else {
 		image, err = os.ReadFile(fallbackImage)
 		if err != nil {
 			return User{}, err
 		}
 	}
+
 	iconHash := sha256.Sum256(image)
 
 	user := User{
