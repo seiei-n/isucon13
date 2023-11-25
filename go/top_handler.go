@@ -14,8 +14,9 @@ type Tag struct {
 }
 
 type TagModel struct {
-	ID   int64  `db:"id"`
-	Name string `db:"name"`
+	ID   		 int64  `db:"id"`
+	LivestreamID int64  `db:"livestream_id"`
+	Name 		 string `db:"name"`
 }
 
 type TagsResponse struct {
