@@ -19,6 +19,10 @@ build:
 darwin:
 	CGO_ENABLED=0 $(DARWIN_TARGET_ENV) $(BUILD) -o $(DESTDIR)/isupipe_darwin -ldflags "-s -w"
 
+.PHONY: pprof
+pprof:
+	go tool pprof -seconds 90 -http=localhost:1080 http://localhost:6060/debug/pprof/profile
+
 .PHONY: docker_image
 docker_image: clean build
 	$(DOCKER_BUILD) -t $(TAG) . $(DOCKER_BUILD_OPTS)
