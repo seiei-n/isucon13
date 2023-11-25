@@ -123,6 +123,7 @@ func initializeHandler(c echo.Context) error {
 		"CREATE INDEX `idx_livestream_id` ON `reactions` (`livestream_id`);",
 		"CREATE INDEX `idx_user_id_on_icon` ON `icons` (`user_id`);",
 		"CREATE INDEX `idx_user_id_on_user` ON `users` (`id`);",
+		"CREATE INDEX `idx_user_id_on_themes` ON `themes` (`user_id`);",
 	}
 
 	for _, q := range queries {
