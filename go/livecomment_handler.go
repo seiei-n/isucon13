@@ -65,6 +65,12 @@ type NGWord struct {
 	CreatedAt    int64  `json:"created_at" db:"created_at"`
 }
 
+type WordComment struct {
+	ID   	int64  `db:"id"`
+	Word    string `db:"word"`
+	Comment string `db:"comment"`
+}
+
 func getLivecommentsHandler(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -381,40 +387,34 @@ func moderateHandler(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get last inserted NG word id: "+err.Error())
 	}
 
-	var ngwords []*NGWord
-	if err := tx.SelectContext(ctx, &ngwords, "SELECT * FROM ng_words WHERE livestream_id = ?", livestreamID); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get NG words: "+err.Error())
-	}
-
 	// ライブコメント一覧取得
-	var livecomments []*LivecommentModel
-	if err := tx.SelectContext(ctx, &livecomments, "SELECT * FROM livecomments"); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
+	var wordComments []*WordComment
+	query := `
+	SELECT livecomments.id, livecomments.comment, ng_words.word
+	FROM livecomments
+	LEFT JOIN ng_words ON livecomments.livestream_id = ng_words.livestream_id
+	WHERE livecomments.livestream_id = ? AND ng_words.word IS NOT NULL
+	`
+	if err := tx.SelectContext(ctx, &wordComments, query, livestreamID); err != nil {
+	    return echo.NewHTTPError(http.StatusInternalServerError, "failed to get word comments: "+err.Error())
 	}
 
-	// NGワードにヒットする過去の投稿も全削除する
-	for _, livecomment := range livecomments {
-		for _, ngword := range ngwords {
-			query := `
-			DELETE FROM livecomments
-			WHERE
-			id = ? AND
-			livestream_id = ? AND
-			(SELECT COUNT(*)
-			FROM
-			(SELECT ? AS text) AS texts
-			INNER JOIN
-			(SELECT CONCAT('%', ?, '%') AS pattern) AS patterns
-			ON texts.text LIKE patterns.pattern) >= 1;
-			`
-			if res, err := tx.ExecContext(ctx, query, livecomment.ID, livestreamID, livecomment.Comment, ngword.Word); err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
-			} else if rowsAffected, _ := res.RowsAffected(); rowsAffected > 0 {
-				// データが存在してかつ削除に成功した場合に break
-				break
-			}
-		}
-	}	
+	for _, wordComment := range wordComments {
+		query := `
+		DELETE FROM livecomments
+		WHERE
+		id = ? AND
+		(SELECT COUNT(*)
+		FROM
+		(SELECT ? AS text) AS texts
+		INNER JOIN
+		(SELECT CONCAT('%', ?, '%') AS pattern) AS patterns
+		ON texts.text LIKE patterns.pattern) >= 1;
+		`
+		if _, err := tx.ExecContext(ctx, query, wordComment.ID, wordComment.Comment, wordComment.Word); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "failed to delete old livecomments that hit spams: "+err.Error())
+		} 
+	}
 
 	if err := tx.Commit(); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to commit: "+err.Error())
