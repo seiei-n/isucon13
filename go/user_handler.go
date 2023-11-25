@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/sha512"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -139,6 +141,7 @@ func getIconHandler(c echo.Context) error {
 }
 
 func postIconHandler(c echo.Context) error {
+	mu := sync.Mutex{}
 	if err := verifyUserSession(c); err != nil {
 		// echo.NewHTTPErrorが返っているのでそのまま出力
 		return err
@@ -156,10 +159,21 @@ func postIconHandler(c echo.Context) error {
 
 	// cacheにあるか確認
 	if _, ok := getCache(fmt.Sprintf("%d", userID)); ok {
+		// cacheにある場合は、cacheを更新
+		mu.Lock()
 		updateCache(fmt.Sprintf("%d", userID), CachedImage{
 			id:    userID,
 			Image: req.Image,
 		})
+		mu.Unlock()
+	} else {
+		// cacheにない場合は、cacheに追加
+		mu.Lock()
+		setCache(fmt.Sprintf("%d", userID), CachedImage{
+			id:    userID,
+			Image: req.Image,
+		})
+		mu.Unlock()
 	}
 
 	return c.JSON(http.StatusCreated, &PostIconResponse{
@@ -420,7 +434,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 		}
 	}
 
-	iconHash := sha256.Sum256(image)
+	iconHash := sha512.Sum512(image)
 
 	user := User{
 		ID:          userModel.ID,
