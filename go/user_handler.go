@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/sha512"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -414,7 +414,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			return User{}, err
 		}
 	}
-	iconHash := sha256.Sum256(image)
+	iconHash :=  sha512.Sum512(image)
 
 	user := User{
 		ID:          userModel.ID,
