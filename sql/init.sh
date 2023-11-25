@@ -72,7 +72,7 @@ mysql -u"$ISUCON_DB_USER" \
 		-p"$ISUCON_DB_PASSWORD" \
 		--host "$ISUCON_DB_HOST" \
 		--port "$ISUCON_DB_PORT" \
-		"$ISUCON_DB_NAME" -e create_index.sql
+		"$ISUCON_DB_NAME" < create_index.sql
 
 bash ../pdns/init_zone.sh 
 
