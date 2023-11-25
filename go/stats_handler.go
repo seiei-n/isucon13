@@ -149,10 +149,9 @@ func getUserStatisticsHandler(c echo.Context) error {
 	if err := tx.SelectContext(ctx, &livestreams, "SELECT * FROM livestreams WHERE user_id = ?", user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livestreams: "+err.Error())
 	}
-
+	
 	var livecomments []*LivecommentModel
-	if err := tx.SelectContext(ctx, &livecomments, `
-	    SELECT livecomments.Tip FROM livestreams LEFT JOIN livecomments ON livestreams.ID = livecomments.livestream_id WHERE livestreams.user_id = ?`, user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := tx.SelectContext(ctx, &livecomments, `SELECT * FROM livestreams LEFT JOIN livecomments ON livestreams.ID = livecomments.livestream_id WHERE livestreams.user_id = ?`, user.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
 	    return echo.NewHTTPError(http.StatusInternalServerError, "failed to get livecomments: "+err.Error())
 	}
 	for _, livecomment := range livecomments {
