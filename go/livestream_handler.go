@@ -498,8 +498,8 @@ func fillLivestreamResponse(ctx context.Context, tx *sqlx.Tx, livestreamModel Li
 	}
 
 	var tagModels []*TagModel
-	// JOINでliveStreamに紐づくタグを取得
-	if err := tx.SelectContext(ctx, &tagModels, "SELECT * FROM tags INNER JOIN livestream_tags ON tags.id = livestream_tags.tag_id WHERE livestream_tags.livestream_id = ?", livestreamModel.ID); err != nil {
+	// タグを取得
+	if err := tx.SelectContext(ctx, &tagModels, "SELECT * FROM tags WHERE id IN (SELECT tag_id FROM livestream_tags WHERE livestream_id = ?)", livestreamModel.ID); err != nil {
 		return Livestream{}, err
 	}
 
