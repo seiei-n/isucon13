@@ -110,7 +110,7 @@ func connectDB(logger echo.Logger) (*sqlx.DB, error) {
 
 func initializeHandler(c echo.Context) error {
 	if out, err := exec.Command("../sql/init.sh").CombinedOutput(); err != nil {
-		c.Logger().Warnf("init.sh failed with err=%s", string(out))
+		// c.Logger().Warnf("init.sh failed with err=%s", string(out))
 		return echo.NewHTTPError(http.StatusInternalServerError, "failed to initialize: "+err.Error())
 	}
 
@@ -127,7 +127,7 @@ func initializeHandler(c echo.Context) error {
 
 	for _, q := range queries {
 		if _, err := dbConn.Exec(q); err != nil {
-			c.Logger().Warnf("failed to execute query: %s", q)
+			// c.Logger().Warnf("failed to execute query: %s", q)
 			continue
 		}
 	}
@@ -146,7 +146,7 @@ func main() {
     // }()
 	// log.Fatal(http.ListenAndServe("localhost:8080", nil))
 	e := echo.New()
-	e.Debug = true
+	e.Debug = false
 	e.Logger.SetLevel(echolog.DEBUG)
 	e.Use(middleware.Logger())
 	cookieStore := sessions.NewCookieStore(secret)
@@ -213,7 +213,7 @@ func main() {
 	// DB接続
 	conn, err := connectDB(e.Logger)
 	if err != nil {
-		e.Logger.Errorf("failed to connect db: %v", err)
+		// e.Logger.Errorf("failed to connect db: %v", err)
 		os.Exit(1)
 	}
 	defer conn.Close()
@@ -221,7 +221,7 @@ func main() {
 
 	subdomainAddr, ok := os.LookupEnv(powerDNSSubdomainAddressEnvKey)
 	if !ok {
-		e.Logger.Errorf("environ %s must be provided", powerDNSSubdomainAddressEnvKey)
+		// e.Logger.Errorf("environ %s must be provided", powerDNSSubdomainAddressEnvKey)
 		os.Exit(1)
 	}
 	powerDNSSubdomainAddress = subdomainAddr
@@ -229,7 +229,7 @@ func main() {
 	// HTTPサーバ起動
 	listenAddr := net.JoinHostPort("", strconv.Itoa(listenPort))
 	if err := e.Start(listenAddr); err != nil {
-		e.Logger.Errorf("failed to start HTTP server: %v", err)
+		// e.Logger.Errorf("failed to start HTTP server: %v", err)
 		os.Exit(1)
 	}
 }
@@ -242,12 +242,12 @@ func errorResponseHandler(err error, c echo.Context) {
 	c.Logger().Errorf("error at %s: %+v", c.Path(), err)
 	if he, ok := err.(*echo.HTTPError); ok {
 		if e := c.JSON(he.Code, &ErrorResponse{Error: err.Error()}); e != nil {
-			c.Logger().Errorf("%+v", e)
+			// c.Logger().Errorf("%+v", e)
 		}
 		return
 	}
 
 	if e := c.JSON(http.StatusInternalServerError, &ErrorResponse{Error: err.Error()}); e != nil {
-		c.Logger().Errorf("%+v", e)
+		// c.Logger().Errorf("%+v", e)
 	}
 }
