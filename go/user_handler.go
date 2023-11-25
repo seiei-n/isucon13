@@ -414,6 +414,7 @@ func fillUserResponse(ctx context.Context, tx *sqlx.Tx, userModel UserModel) (Us
 			return User{}, err
 		}
 	}
+	
 	iconHash :=  sha512.Sum512(image)
 
 	user := User{
